@@ -11,6 +11,6 @@ public interface OrdService {
     Optional<Ord> findById(Long id);
     List<Ord> findAll();
     Ord save(Ord ord);
+    void updateById(Ord ord,Long id);
     
-
 }

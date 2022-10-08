@@ -50,6 +50,9 @@ public class OrdServiceImpl implements OrdService {
         return ord;
     }
 
-   
+    @Override
+    public void updateById(Ord ord, Long id) {
+        ordRepository.deleteById(id);
+    }
 
 }

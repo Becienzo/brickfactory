@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RestController;
 
 
+import com.caci.brickfactory.exceptions.OrderNotFoundException;
 import com.caci.brickfactory.model.Ord;
 
 import com.caci.brickfactory.service.OrdService;
@@ -70,8 +71,25 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
          
+    }
+    @PutMapping("/orders/{ordRef}")
+    public ResponseEntity<?> updateOrd(@RequestBody Ord ord, @PathVariable Long ordRef) throws Exception {
 
-        
+        Ord existingOrd = ordService.findById(ordRef)
+                .orElseThrow(() -> new OrderNotFoundException("No value present!"));
+
+        existingOrd.setAmountOfBrick(ord.getAmountOfBrick());
+        ord = ordService.save(ord);
+
+        try {
+
+            return ResponseEntity
+                    .ok()
+                    .location(new URI("/orders/" + ord.getOrdRef()))
+                    .body(ord);
+        } catch (URISyntaxException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     

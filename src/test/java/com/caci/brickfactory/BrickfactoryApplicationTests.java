@@ -121,6 +121,31 @@ class BrickfactoryApplicationTests {
                 .andExpect(jsonPath("$[1].status", is("not processed")));
 	}
 
+	@Test
+
+	@DisplayName("PUT /orders/single success")
+	public void updateOrdTest() throws Exception {
+		
+        Ord ordToPut = new Ord(1L,5, "not processed");
+        Ord ordToReturnFindBy = new Ord(2L, 10, "not processed");
+        Ord ordToReturnSave = new Ord(3L, 15, "not processed");
+
+        doReturn(Optional.of(ordToReturnFindBy)).when(ordService).findById(1L);
+        doReturn(ordToReturnSave).when(ordService).save(any());
+
+        
+        mockMvc.perform(put("/orders/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 2)
+                .content(asJsonString(ordToPut)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(header().string(HttpHeaders.LOCATION, "/orders/3"))
+                .andExpect(jsonPath("$.ordRef", is(3)))
+                .andExpect(jsonPath("$.amountOfBrick", is(15)))
+                .andExpect(jsonPath("$.status", is("not processed")));
+	}
+
 	static String asJsonString(final Object obj) {
         try {
             return new ObjectMapper().writeValueAsString(obj);
