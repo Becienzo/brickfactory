@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import org.springframework.web.bind.annotation.RestController;
 
-
+import com.caci.brickfactory.exceptions.OrderAlreadyDispatchedException;
 import com.caci.brickfactory.exceptions.OrderNotFoundException;
 import com.caci.brickfactory.model.Ord;
 
@@ -71,7 +71,10 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
          
+
+        
     }
+
     @PutMapping("/orders/{ordRef}")
     public ResponseEntity<?> updateOrd(@RequestBody Ord ord, @PathVariable Long ordRef) throws Exception {
 
@@ -92,6 +95,26 @@ public class OrderController {
         }
     }
 
-    
+    @PutMapping("/fulfill-orders/{ordRef}")
+    public ResponseEntity<?> fulfillOrd(@PathVariable Long ordRef) throws Exception {
+
+        Ord existingOrd = ordService.findById(ordRef)
+                .orElseThrow(() -> new OrderNotFoundException("No value present!"));
+        if (existingOrd.getStatus().equals("dispatched")) {
+            throw new OrderAlreadyDispatchedException("Order already dispatched");
+        } else {
+            existingOrd.setStatus("dispatched");
+        }
+        ordService.save(existingOrd);
+        try {
+
+            return ResponseEntity
+                    .ok()
+                    .location(new URI("/orders/" + existingOrd.getOrdRef()))
+                    .body(existingOrd);
+        } catch (URISyntaxException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
 }

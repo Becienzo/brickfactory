@@ -38,15 +38,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 class BrickfactoryApplicationTests {
-	static Logger logger = Logger.getLogger(BrickfactoryApplicationTests.class.getName());
+    static Logger logger = Logger.getLogger(BrickfactoryApplicationTests.class.getName());
 
-	@MockBean
-	private OrdService ordService;
+    @MockBean
+    private OrdService ordService;
 
-	@Autowired
-	private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-	@Test
+    @Test
 	@DisplayName("POST /orders success")
 	@Rollback(value = false)
 	public void saveOrderTest() throws Exception {
@@ -68,7 +68,7 @@ class BrickfactoryApplicationTests {
                 .andExpect(jsonPath("$.status", is("not processed")));
 	}
 
-	@Test
+    @Test
 	@DisplayName("GET /orders/single success")
 
 	public void getOrderTest() throws Exception {
@@ -85,7 +85,7 @@ class BrickfactoryApplicationTests {
                 .andExpect(jsonPath("$.status", is("not processed")));;
 	}
 
-	@Test
+    @Test
     @DisplayName("GET /orders/1 - Not Found")
     void testGetOrdByIdNotFound() throws Exception {
 
@@ -95,7 +95,7 @@ class BrickfactoryApplicationTests {
                 .andExpect(status().isNotFound());
     }
 
-	@Test
+    @Test
 	@DisplayName("GET /orders/all success")
 
 	public void getListOfOrdersTest() throws Exception{
@@ -121,7 +121,7 @@ class BrickfactoryApplicationTests {
                 .andExpect(jsonPath("$[1].status", is("not processed")));
 	}
 
-	@Test
+    @Test
 
 	@DisplayName("PUT /orders/single success")
 	public void updateOrdTest() throws Exception {
@@ -146,7 +146,85 @@ class BrickfactoryApplicationTests {
                 .andExpect(jsonPath("$.status", is("not processed")));
 	}
 
-	static String asJsonString(final Object obj) {
+    @Test
+
+	@DisplayName("PUT /orders/1 - Not Found")
+	public void updateWrongOrdTest() throws Exception {
+		
+        Ord ordToPut = new Ord(20L,10, "not processed");
+
+        doReturn(Optional.empty()).when(ordService).findById(1L);
+
+        mockMvc.perform(put("/orders/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 3)
+                .content(asJsonString(ordToPut)))
+                .andExpect(status().isNotFound());
+
+	}
+
+    @Test
+
+	@Rollback(value = false)
+	@DisplayName("PUT /fulfill-orders/single success")
+	public void dispatchTest() throws Exception {
+		
+        Ord ordToPut = new Ord(1L,5, "not processed");
+        Ord ordToReturnFindBy = new Ord(2L, 10, "not processed");
+        Ord ordToReturnSave = new Ord(3L, 15, "not processed");
+
+        doReturn(Optional.of(ordToReturnFindBy)).when(ordService).findById(1L);
+        doReturn(ordToReturnSave).when(ordService).save(any());
+
+        
+        mockMvc.perform(put("/fulfill-orders/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 2)
+                .content(asJsonString(ordToPut)))     
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))           
+                .andExpect(header().string(HttpHeaders.LOCATION, "/orders/2"))
+                .andExpect(jsonPath("$.ordRef", is(2)))
+                .andExpect(jsonPath("$.amountOfBrick", is(10)))
+                .andExpect(jsonPath("$.status", is("dispatched")));
+	}
+
+    @Test
+
+	@Rollback(value = false)
+	@DisplayName("PUT /fulfill-orders/single 404")
+	public void dispatchNonExistingTest() throws Exception {
+        Ord ordToPut = new Ord(20L,10, "not processed");
+
+        doReturn(Optional.empty()).when(ordService).findById(1L);
+
+        mockMvc.perform(put("/fulfill-orders/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 3)
+                .content(asJsonString(ordToPut)))
+                .andExpect(status().isNotFound());
+	}
+
+    @Test
+
+	@Rollback(value = false)
+	@DisplayName("PUT /fulfill-orders/single 400")
+	public void dispatchAlreadyDispatchedTest() throws Exception {
+
+        Ord ordToPut = new Ord(1L,5, "dispatched");
+        Ord ordToReturn = new Ord(2L, 10, "dispatched");
+
+        doReturn(Optional.of(ordToReturn)).when(ordService).findById(1L);
+        doReturn(ordToReturn).when(ordService).save(any());
+
+        mockMvc.perform(put("/fulfill-orders/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 3)
+                .content(asJsonString(ordToPut)))
+                .andExpect(status().isBadRequest());
+	}
+
+    static String asJsonString(final Object obj) {
         try {
             return new ObjectMapper().writeValueAsString(obj);
         } catch (Exception e) {
